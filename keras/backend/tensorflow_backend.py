@@ -290,7 +290,8 @@ def _has_nchw_support():
     """
     explicitly_on_cpu = _is_current_explicit_device('CPU')
     gpus_available = len(_get_available_gpus()) > 0
-    return (not explicitly_on_cpu and gpus_available)
+    ves_available = 1 # FIXME
+    return (not explicitly_on_cpu and gpus_available and ves_available)
 
 
 # VARIABLE MANIPULATION
