@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import binascii
 import numpy as np
+import os
 
 import time
 import sys
@@ -345,7 +346,10 @@ class Progbar(object):
         self._seen_so_far = current
 
         now = time.time()
-        info = ' - %.0fs' % (now - self._start)
+        if os.environ.get('OLDINTERFACE'):
+          info = ' - %.0fs' % (now - self._start)
+        else:
+          info = ' - %fs' % (now - self._start)
         if self.verbose == 1:
             if (now - self._last_update < self.interval and
                     self.target is not None and current < self.target):
