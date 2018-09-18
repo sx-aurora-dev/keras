@@ -266,6 +266,16 @@ def _is_current_explicit_device(device_type):
     device = _get_current_tf_device()
     return (device is not None and device.device_type == device_type.upper())
 
+def _get_available_devices(device_type):
+    """Get a list of available devices of device_type (formatted as strings).
+
+    # Returns
+        A list of available devices of device_type.
+    """
+    global _LOCAL_DEVICES
+    if _LOCAL_DEVICES is None:
+        _LOCAL_DEVICES = get_session().list_devices()
+    return [x.name for x in _LOCAL_DEVICES if x.device_type == device_type]
 
 def _get_available_gpus():
     """Get a list of available gpu devices (formatted as strings).
@@ -273,11 +283,15 @@ def _get_available_gpus():
     # Returns
         A list of available GPU devices.
     """
-    global _LOCAL_DEVICES
-    if _LOCAL_DEVICES is None:
-        _LOCAL_DEVICES = get_session().list_devices()
-    return [x.name for x in _LOCAL_DEVICES if x.device_type == 'GPU']
+    return _get_available_devices('GPU')
 
+def _get_available_ves():
+    """Get a list of available ve devices (formatted as strings).
+
+    # Returns
+        A list of available VE devices.
+    """
+    return _get_available_devices('VE')
 
 def _has_nchw_support():
     """Check whether the current scope supports NCHW ops.
@@ -290,7 +304,7 @@ def _has_nchw_support():
     """
     explicitly_on_cpu = _is_current_explicit_device('CPU')
     gpus_available = len(_get_available_gpus()) > 0
-    ves_available = True # FIXME
+    ves_available = len(_get_available_ves()) > 0
     return (not explicitly_on_cpu and (gpus_available or ves_available))
 
 
