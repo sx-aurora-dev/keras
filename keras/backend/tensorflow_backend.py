@@ -1251,7 +1251,9 @@ def max(x, axis=None, keepdims=False):
 
     # Arguments
         x: A tensor or variable.
-        axis: An integer, the axis to find maximum values.
+        axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to find maximum values. If `None` (default), finds the
+            maximum over all dimensions.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1. If `keepdims` is `True`,
@@ -1268,7 +1270,9 @@ def min(x, axis=None, keepdims=False):
 
     # Arguments
         x: A tensor or variable.
-        axis: An integer, the axis to find minimum values.
+        axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to find minimum values. If `None` (default), finds the
+            minimum over all dimensions.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1. If `keepdims` is `True`,
@@ -1285,7 +1289,9 @@ def sum(x, axis=None, keepdims=False):
 
     # Arguments
         x: A tensor or variable.
-        axis: An integer, the axis to sum over.
+        axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to sum over. If `None` (default), sums over all
+            dimensions.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1. If `keepdims` is `True`,
@@ -1302,7 +1308,9 @@ def prod(x, axis=None, keepdims=False):
 
     # Arguments
         x: A tensor or variable.
-        axis: An integer, the axis to compute the product.
+        axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to compute the product. If `None` (default), computes
+            the product over all dimensions.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1. If `keepdims` is `True`,
@@ -1345,7 +1353,9 @@ def var(x, axis=None, keepdims=False):
 
     # Arguments
         x: A tensor or variable.
-        axis: An integer, the axis to compute the variance.
+        axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to compute the variance. If `None` (default), computes
+            the variance over all dimensions.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1. If `keepdims` is `True`,
@@ -1368,7 +1378,9 @@ def std(x, axis=None, keepdims=False):
 
     # Arguments
         x: A tensor or variable.
-        axis: An integer, the axis to compute the standard deviation.
+        axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to compute the standard deviation. If `None` (default),
+            computes the standard deviation over all dimensions.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1. If `keepdims` is `True`,
@@ -1385,7 +1397,9 @@ def mean(x, axis=None, keepdims=False):
 
     # Arguments
         x: A tensor or variable.
-        axis: A list of integer. Axes to compute the mean.
+        axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to compute the mean. If `None` (default), computes
+            the mean over all dimensions.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1 for each entry in `axis`. If `keepdims` is `True`,
@@ -1404,7 +1418,9 @@ def any(x, axis=None, keepdims=False):
 
     # Arguments
         x: Tensor or variable.
-        axis: axis along which to perform the reduction.
+        axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to compute the logical or. If `None` (default), computes
+            the logical or over all dimensions.
         keepdims: whether the drop or broadcast the reduction axes.
 
     # Returns
@@ -1419,7 +1435,9 @@ def all(x, axis=None, keepdims=False):
 
     # Arguments
         x: Tensor or variable.
-        axis: axis along which to perform the reduction.
+        axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to compute the logical and. If `None` (default), computes
+            the logical and over all dimensions.
         keepdims: whether the drop or broadcast the reduction axes.
 
     # Returns
@@ -1527,7 +1545,9 @@ def logsumexp(x, axis=None, keepdims=False):
 
     # Arguments
         x: A tensor or variable.
-        axis: An integer, the axis to reduce over.
+        axis: axis: An integer or list of integers in [-rank(x), rank(x)),
+            the axes to compute the logsumexp. If `None` (default), computes
+            the logsumexp over all dimensions.
         keepdims: A boolean, whether to keep the dimensions or not.
             If `keepdims` is `False`, the rank of the tensor is reduced
             by 1. If `keepdims` is `True`, the reduced dimension is
@@ -1900,17 +1920,17 @@ def batch_normalization(x, mean, var, beta, gamma, axis=-1, epsilon=1e-3):
             # The mean / var / beta / gamma may be processed by broadcast
             # so it may have extra axes with 1, it is not needed and should be removed
             if ndim(mean) > 1:
-                mean = tf.squeeze(mean)
+                mean = tf.reshape(mean, (-1))
             if ndim(var) > 1:
-                var = tf.squeeze(var)
+                var = tf.reshape(var, (-1))
             if beta is None:
                 beta = zeros_like(mean)
             elif ndim(beta) > 1:
-                beta = tf.squeeze(beta)
+                beta = tf.reshape(beta, (-1))
             if gamma is None:
                 gamma = ones_like(mean)
             elif ndim(gamma) > 1:
-                gamma = tf.squeeze(gamma)
+                gamma = tf.reshape(gamma, (-1))
             y, _, _ = tf.nn.fused_batch_norm(
                 x,
                 gamma,
@@ -2560,7 +2580,10 @@ class Function(object):
         # (since the outputs of fetches are never returned).
         # This requires us to wrap fetches in `identity` ops.
         self.fetches = [tf.identity(x) for x in self.fetches]
-        self.session_kwargs = session_kwargs
+        # self.session_kwargs is used for _legacy_call
+        self.session_kwargs = session_kwargs.copy()
+        self.run_options = session_kwargs.pop('options', None)
+        self.run_metadata = session_kwargs.pop('run_metadata', None)
         if session_kwargs:
             raise ValueError('Some keys in session_kwargs are not '
                              'supported at this '
@@ -2608,6 +2631,9 @@ class Function(object):
             callable_opts.fetch.append(x.name)
         # Handle updates.
         callable_opts.target.append(self.updates_op.name)
+        # Handle run_options.
+        if self.run_options:
+            callable_opts.run_options.CopyFrom(self.run_options)
         # Create callable.
         callable_fn = session._make_callable_from_options(callable_opts)
         # Cache parameters corresponding to the generated callable, so that
@@ -2658,7 +2684,10 @@ class Function(object):
                                 feed_symbols,
                                 symbol_vals,
                                 session)
-        fetched = self._callable_fn(*array_vals)
+        if self.run_metadata:
+            fetched = self._callable_fn(*array_vals, run_metadata=self.run_metadata)
+        else:
+            fetched = self._callable_fn(*array_vals)
         return fetched[:len(self.outputs)]
 
     def _legacy_call(self, inputs):
@@ -2686,6 +2715,16 @@ class Function(object):
                     raise ValueError(
                         'Feeding from symbolic tensors is not '
                         'supported with sparse inputs.')
+                return self._legacy_call(inputs)
+
+            # callable generated by Session._make_callable_from_options accepts
+            # `run_metadata` keyword argument since TF 1.10
+            if (self.run_metadata and
+                    StrictVersion(tf.__version__.split('-')[0]) < StrictVersion('1.10.0')):
+                if py_any(is_tensor(x) for x in inputs):
+                    raise ValueError(
+                        'In order to feed symbolic tensors to a Keras model and set '
+                        '`run_metadata`, you need tensorflow 1.10 or higher.')
                 return self._legacy_call(inputs)
 
             return self._call(inputs)
@@ -3124,27 +3163,55 @@ def in_test_phase(x, alt, training=None):
 
 # NN OPERATIONS
 
-def relu(x, alpha=0., max_value=None):
+def relu(x, alpha=0., max_value=None, threshold=0.):
     """Rectified linear unit.
 
     With default values, it returns element-wise `max(x, 0)`.
 
+    Otherwise, it follows:
+    `f(x) = max_value` for `x >= max_value`,
+    `f(x) = x` for `threshold <= x < max_value`,
+    `f(x) = alpha * (x - threshold)` otherwise.
+
     # Arguments
         x: A tensor or variable.
         alpha: A scalar, slope of negative section (default=`0.`).
-        max_value: Saturation threshold.
+        max_value: float. Saturation threshold.
+        threshold: float. Threshold value for thresholded activation.
 
     # Returns
         A tensor.
     """
+
     if alpha != 0.:
-        x = tf.nn.leaky_relu(x, alpha)
+        if max_value is None and threshold == 0.:
+            return tf.nn.leaky_relu(x, alpha=alpha)
+
+        if threshold != 0.:
+            negative_part = tf.nn.relu(-x + threshold)
+        else:
+            negative_part = tf.nn.relu(-x)
+
+    clip_max = max_value is not None
+
+    if threshold != 0:
+        # computes x for x > threshold else 0
+        x = x * tf.cast(tf.greater(x, threshold), floatx())
+    elif max_value == 6:
+        # if no threshold, then can use nn.relu6 native TF op for performance
+        x = tf.nn.relu6(x)
+        clip_max = False
     else:
         x = tf.nn.relu(x)
 
-    if max_value is not None:
+    if clip_max:
         max_value = _to_tensor(max_value, x.dtype.base_dtype)
-        x = tf.minimum(x, max_value)
+        zero = _to_tensor(0., x.dtype.base_dtype)
+        x = tf.clip_by_value(x, zero, max_value)
+
+    if alpha != 0:
+        alpha = _to_tensor(alpha, x.dtype.base_dtype)
+        x -= alpha * negative_part
     return x
 
 
@@ -3448,12 +3515,14 @@ def _preprocess_conv1d_input(x, data_format):
     return x, tf_data_format
 
 
-def _preprocess_conv2d_input(x, data_format):
+def _preprocess_conv2d_input(x, data_format, force_transpose=False):
     """Transpose and cast the input before the conv2d.
 
     # Arguments
         x: input tensor.
         data_format: string, `"channels_last"` or `"channels_first"`.
+        force_transpose: boolean, whether force to transpose input from NCHW to NHWC
+                        if the `data_format` is `"channels_first"`.
 
     # Returns
         A tensor.
@@ -3464,7 +3533,7 @@ def _preprocess_conv2d_input(x, data_format):
         x = tf.cast(x, 'float32')
     tf_data_format = 'NHWC'
     if data_format == 'channels_first':
-        if not _has_nchw_support():
+        if not _has_nchw_support() or force_transpose:
             x = tf.transpose(x, (0, 2, 3, 1))  # NCHW -> NHWC
         else:
             tf_data_format = 'NCHW'
@@ -3601,7 +3670,7 @@ def conv2d(x, kernel, strides=(1, 1), padding='valid',
 
 
 def conv2d_transpose(x, kernel, output_shape, strides=(1, 1),
-                     padding='valid', data_format=None):
+                     padding='valid', data_format=None, dilation_rate=(1, 1)):
     """2D deconvolution (i.e. transposed convolution).
 
     # Arguments
@@ -3613,6 +3682,7 @@ def conv2d_transpose(x, kernel, output_shape, strides=(1, 1),
         data_format: string, `"channels_last"` or `"channels_first"`.
             Whether to use Theano or TensorFlow/CNTK data format
             for inputs/kernels/outputs.
+        dilation_rate: tuple of 2 integers.
 
     # Returns
         A tensor, result of transposed 2D convolution.
@@ -3625,7 +3695,13 @@ def conv2d_transpose(x, kernel, output_shape, strides=(1, 1),
     if isinstance(output_shape, (tuple, list)):
         output_shape = tf.stack(output_shape)
 
-    x, tf_data_format = _preprocess_conv2d_input(x, data_format)
+    # tf.nn.atrous_conv2d_transpose input only supports NHWC format
+    if data_format == 'channels_first' and dilation_rate != (1, 1):
+        force_transpose = True
+    else:
+        force_transpose = False
+
+    x, tf_data_format = _preprocess_conv2d_input(x, data_format, force_transpose)
 
     if data_format == 'channels_first' and tf_data_format == 'NHWC':
         output_shape = (output_shape[0],
@@ -3642,9 +3718,15 @@ def conv2d_transpose(x, kernel, output_shape, strides=(1, 1),
     else:
         strides = (1, 1) + strides
 
-    x = tf.nn.conv2d_transpose(x, kernel, output_shape, strides,
-                               padding=padding,
-                               data_format=tf_data_format)
+    if dilation_rate == (1, 1):
+        x = tf.nn.conv2d_transpose(x, kernel, output_shape, strides,
+                                   padding=padding,
+                                   data_format=tf_data_format)
+    else:
+        assert dilation_rate[0] == dilation_rate[1]
+        x = tf.nn.atrous_conv2d_transpose(
+            x, kernel, output_shape, dilation_rate[0], padding)
+
     if data_format == 'channels_first' and tf_data_format == 'NHWC':
         x = tf.transpose(x, (0, 3, 1, 2))  # NHWC -> NCHW
     return x
