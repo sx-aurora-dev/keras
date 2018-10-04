@@ -110,19 +110,22 @@ def fit_generator(model,
                 # Create an Enqueuer that can be reused
                 val_data = validation_data
                 if isinstance(val_data, Sequence):
-                    val_enqueuer = OrderedEnqueuer(val_data,
-                                                   use_multiprocessing=use_multiprocessing)
+                    val_enqueuer = OrderedEnqueuer(
+                        val_data,
+                        use_multiprocessing=use_multiprocessing)
                     validation_steps = validation_steps or len(val_data)
                 else:
-                    val_enqueuer = GeneratorEnqueuer(val_data,
-                                                     use_multiprocessing=use_multiprocessing)
+                    val_enqueuer = GeneratorEnqueuer(
+                        val_data,
+                        use_multiprocessing=use_multiprocessing)
                 val_enqueuer.start(workers=workers,
                                    max_queue_size=max_queue_size)
                 val_enqueuer_gen = val_enqueuer.get()
             elif val_gen:
                 val_data = validation_data
                 if isinstance(val_data, Sequence):
-                    val_enqueuer_gen = iter_sequence_infinite(generator)
+                    val_enqueuer_gen = iter_sequence_infinite(val_data)
+                    validation_steps = validation_steps or len(val_data)
                 else:
                     val_enqueuer_gen = val_data
             else:

@@ -91,6 +91,7 @@ if sys.version[0] == '2':
 
 EXCLUDE = {
     'Optimizer',
+    'TFOptimizer',
     'Wrapper',
     'get_session',
     'set_session',
@@ -173,6 +174,7 @@ PAGES = [
             layers.SeparableConv2D,
             layers.Conv2DTranspose,
             layers.Conv3D,
+            layers.Conv3DTranspose,
             layers.Cropping1D,
             layers.Cropping2D,
             layers.Cropping3D,

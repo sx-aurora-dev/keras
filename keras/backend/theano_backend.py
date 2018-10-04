@@ -589,24 +589,7 @@ def any(x, axis=None, keepdims=False):
     """Bitwise reduction (logical OR).
     """
     y = T.any(x, axis=axis, keepdims=keepdims)
-    if hasattr(x, '_keras_shape'):
-        if axis is None:
-            y._keras_shape = (1,) * len(x._keras_shape) if keepdims else (1,)
-        else:
-            if isinstance(axis, int):
-                axis_list = [axis]
-            else:
-                axis_list = list(set(int(a) for a in axis))
-            keras_shape_list = list(x._keras_shape)
-            if keepdims:
-                for a in axis_list:
-                    keras_shape_list[a] = 1
-            else:
-                for a in axis_list[::-1]:
-                    keras_shape_list.pop(a)
-                if not keras_shape_list:
-                    keras_shape_list = (1,)
-            y._keras_shape = tuple(keras_shape_list)
+    y = _set_keras_shape_for_reduction(x, y, axis, keepdims)
     return y
 
 
@@ -614,6 +597,11 @@ def all(x, axis=None, keepdims=False):
     """Bitwise reduction (logical AND).
     """
     y = T.all(x, axis=axis, keepdims=keepdims)
+    y = _set_keras_shape_for_reduction(x, y, axis, keepdims)
+    return y
+
+
+def _set_keras_shape_for_reduction(x, y, axis, keepdims):
     if hasattr(x, '_keras_shape'):
         if axis is None:
             y._keras_shape = (1,) * len(x._keras_shape) if keepdims else (1,)
@@ -1719,19 +1707,35 @@ def elu(x, alpha=1.0):
     return T.nnet.elu(x, alpha)
 
 
-def relu(x, alpha=0., max_value=None):
+def relu(x, alpha=0., max_value=None, threshold=0.):
     _assert_has_capability(T.nnet, 'relu')
-    x = T.nnet.relu(x, alpha)
+
+    if alpha != 0.:
+        if threshold != 0.:
+            negative_part = T.nnet.relu(-x + threshold)
+        else:
+            negative_part = T.nnet.relu(-x)
+
+    if threshold != 0.:
+        x = x * T.cast(T.gt(x, threshold), floatx())
+    else:
+        x = T.nnet.relu(x)
+
     if max_value is not None:
-        x = T.minimum(x, max_value)
+        x = T.clip(x, 0.0, max_value)
+
+    if alpha != 0.:
+        x -= alpha * negative_part
+
     return x
 
 
 def softmax(x, axis=-1):
-    if axis == -1 or axis == x.ndim - 1:
+    if (axis == -1 or axis == x.ndim - 1) and x.ndim == 2:
         return T.nnet.softmax(x)
-    return T.exp(x - x.max()) / T.exp(
-        x - x.max()).sum(axis=axis, keepdims=True)
+    xm = x.max(axis=axis, keepdims=True)
+    return T.exp(x - xm) / T.exp(
+        x - xm).sum(axis=axis, keepdims=True)
 
 
 def softplus(x):
@@ -2134,7 +2138,7 @@ def conv2d(x, kernel, strides=(1, 1), padding='valid',
 
 
 def conv2d_transpose(x, kernel, output_shape, strides=(1, 1),
-                     padding='valid', data_format=None):
+                     padding='valid', data_format=None, dilation_rate=(1, 1)):
     """2D deconvolution (transposed convolution).
 
     # Arguments
@@ -2144,7 +2148,8 @@ def conv2d_transpose(x, kernel, output_shape, strides=(1, 1),
         padding: string, "same" or "valid".
         data_format: "channels_last" or "channels_first".
             Whether to use Theano or TensorFlow data format
-        in inputs/kernels/outputs.
+            in inputs/kernels/outputs.
+        dilation_rate: tuple of 2 integers.
 
     # Raises
         ValueError: if using an even kernel size with padding 'same'.
@@ -2177,7 +2182,8 @@ def conv2d_transpose(x, kernel, output_shape, strides=(1, 1),
                                                         kshp=kernel_shape,
                                                         subsample=strides,
                                                         border_mode=th_padding,
-                                                        filter_flip=not flip_filters)
+                                                        filter_flip=not flip_filters,
+                                                        filter_dilation=dilation_rate)
     conv_out = op(kernel, x, output_shape[2:])
     conv_out = _postprocess_conv2d_output(conv_out, x, padding,
                                           kernel_shape, strides, data_format)
