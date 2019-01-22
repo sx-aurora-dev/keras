@@ -29,10 +29,9 @@ from ..legacy import interfaces
 class Masking(Layer):
     """Masks a sequence by using a mask value to skip timesteps.
 
-    For each timestep in the input tensor (dimension #1 in the tensor),
-    if all values in the input tensor at that timestep
-    are equal to `mask_value`, then the timestep will be masked (skipped)
-    in all downstream layers (as long as they support masking).
+    If all features for a given sample timestep are equal to `mask_value`,
+    then the sample timestep will be masked (skipped) in all downstream layers
+    (as long as they support masking).
 
     If any downstream layer does not support masking yet receives such
     an input mask, an exception will be raised.
@@ -41,10 +40,10 @@ class Masking(Layer):
 
     Consider a Numpy data array `x` of shape `(samples, timesteps, features)`,
     to be fed to an LSTM layer.
-    You want to mask timestep #3 and #5 because you lack data for
-    these timesteps. You can:
+    You want to mask sample #0 at timestep #3, and sample #2 at timestep #5,
+    because you lack features for these sample timesteps. You can do:
 
-        - set `x[:, 3, :] = 0.` and `x[:, 5, :] = 0.`
+        - set `x[0, 3, :] = 0.` and `x[2, 5, :] = 0.`
         - insert a `Masking` layer with `mask_value=0.` before the LSTM layer:
 
     ```python
@@ -95,8 +94,8 @@ class Dropout(Layer):
         seed: A Python integer to use as random seed.
 
     # References
-        - [Dropout: A Simple Way to Prevent Neural Networks from Overfitting]
-          (http://www.jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf)
+        - [Dropout: A Simple Way to Prevent Neural Networks from Overfitting](
+           http://www.jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf)
     """
     @interfaces.legacy_dropout_support
     def __init__(self, rate, noise_shape=None, seed=None, **kwargs):
@@ -159,8 +158,8 @@ class SpatialDropout1D(Dropout):
         Same as input
 
     # References
-        - [Efficient Object Localization Using Convolutional Networks]
-          (https://arxiv.org/abs/1411.4280)
+        - [Efficient Object Localization Using Convolutional Networks](
+           https://arxiv.org/abs/1411.4280)
     """
 
     @interfaces.legacy_spatialdropout1d_support
@@ -205,8 +204,8 @@ class SpatialDropout2D(Dropout):
         Same as input
 
     # References
-        - [Efficient Object Localization Using Convolutional Networks]
-          (https://arxiv.org/abs/1411.4280)
+        - [Efficient Object Localization Using Convolutional Networks](
+           https://arxiv.org/abs/1411.4280)
     """
 
     @interfaces.legacy_spatialdropoutNd_support
@@ -254,8 +253,8 @@ class SpatialDropout3D(Dropout):
         Same as input
 
     # References
-        - [Efficient Object Localization Using Convolutional Networks]
-          (https://arxiv.org/abs/1411.4280)
+        - [Efficient Object Localization Using Convolutional Networks](
+           https://arxiv.org/abs/1411.4280)
     """
 
     @interfaces.legacy_spatialdropoutNd_support
@@ -592,10 +591,30 @@ class Lambda(Layer):
         model.add(Lambda(antirectifier,
                          output_shape=antirectifier_output_shape))
     ```
+    ```python
+        # add a layer that returns the hadamard product
+        # and sum of it from two input tensors
+
+        def hadamard_product_sum(tensors):
+            out1 = tensors[0] * tensors[1]
+            out2 = K.sum(out1, axis=-1)
+            return [out1, out2]
+
+        def hadamard_product_sum_output_shape(input_shapes):
+            shape1 = list(input_shapes[0])
+            shape2 = list(input_shapes[1])
+            assert shape1 == shape2  # else hadamard product isn't possible
+            return [tuple(shape1), tuple(shape2[:-1])]
+
+        x1 = Dense(32)(input_1)
+        x2 = Dense(32)(input_2)
+        layer = Lambda(hadamard_product_sum, hadamard_product_sum_output_shape)
+        x_hadamard, x_sum = layer([x1, x2])
+    ```
 
     # Arguments
         function: The function to be evaluated.
-            Takes input tensor as first argument.
+            Takes input tensor or list of tensors as first argument.
         output_shape: Expected output shape from function.
             Only relevant when using Theano.
             Can be a tuple or function.

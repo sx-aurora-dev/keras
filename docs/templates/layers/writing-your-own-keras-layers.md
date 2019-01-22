@@ -10,7 +10,7 @@ Here is the skeleton of a Keras layer, **as of Keras 2.0** (if you have an older
 
 ```python
 from keras import backend as K
-from keras.engine.topology import Layer
+from keras.layers import Layer
 
 class MyLayer(Layer):
 
@@ -33,11 +33,11 @@ class MyLayer(Layer):
         return (input_shape[0], self.output_dim)
 ```
 
-It is also possible to define Keras layers which have multiple input tensors and multiple ouput tensors. To do this, you should assume that the inputs and outputs of the methods `build(input_shape)`, `call(x)` and `compute_output_shape(input_shape)` are lists. Here is an example, similar to the one above:
+It is also possible to define Keras layers which have multiple input tensors and multiple output tensors. To do this, you should assume that the inputs and outputs of the methods `build(input_shape)`, `call(x)` and `compute_output_shape(input_shape)` are lists. Here is an example, similar to the one above:
 
 ```python
 from keras import backend as K
-from keras.engine.topology import Layer
+from keras.layers import Layer
 
 class MyLayer(Layer):
 

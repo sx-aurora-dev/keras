@@ -975,9 +975,6 @@ class Network(Layer):
                     kwargs = input_data[3]
                 else:
                     raise ValueError('Improperly formatted model config.')
-                if inbound_layer_name not in created_layers:
-                    add_unprocessed_node(layer, node_data)
-                    return
                 inbound_layer = created_layers[inbound_layer_name]
                 if len(inbound_layer._inbound_nodes) <= inbound_node_index:
                     add_unprocessed_node(layer, node_data)
@@ -1089,6 +1086,7 @@ class Network(Layer):
         from ..models import save_model
         save_model(self, filepath, overwrite, include_optimizer)
 
+    @saving.allow_write_to_gcs
     def save_weights(self, filepath, overwrite=True):
         """Dumps all layer weights to a HDF5 file.
 
@@ -1121,6 +1119,7 @@ class Network(Layer):
             saving.save_weights_to_hdf5_group(f, self.layers)
             f.flush()
 
+    @saving.allow_read_from_gcs
     def load_weights(self, filepath, by_name=False,
                      skip_mismatch=False, reshape=False):
         """Loads all layer weights from a HDF5 save file.
@@ -1308,7 +1307,7 @@ def _map_graph_network(inputs, outputs):
         This recursively updates the map `layer_indices`,
         the list `nodes_in_decreasing_depth` and the set `network_nodes`.
 
-        # Arguments:
+        # Arguments
             tensor: Some tensor in a graph.
             finished_nodes: Set of nodes whose subgraphs have been traversed
                 completely. Useful to prevent duplicated work.
@@ -1319,7 +1318,7 @@ def _map_graph_network(inputs, outputs):
             node_index: Node index from which `tensor` comes from.
             tensor_index: Tensor_index from which `tensor` comes from.
 
-        # Raises:
+        # Raises
             ValueError: if a cycle is detected.
         """
         node = layer._inbound_nodes[node_index]
